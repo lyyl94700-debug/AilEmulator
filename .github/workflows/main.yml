@@ -1,4 +1,4 @@
-ضname: Build AliEmulator APK
+name: Build AliEmulator APK
 
 on:
   push:
@@ -12,65 +12,63 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: set up JDK 17
+    - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Create Complete Android Project
+    - name: Build Android Project From Scratch
       run: |
-        # 1. إنشاء هيكل المجلدات الرسمي لأندرويد ستوديو
+        # إنشاء الهيكل الرسمي المضمون لأندرويد ستوديو
         mkdir -p app/src/main/java/com/cyber/g99emulator
         mkdir -p app/src/main/res/layout
         mkdir -p app/src/main/res/values
 
-        # 2. تحديد مكان الملفات المرفوعة
-        if [ -d "AliEmulator" ]; then
-          SRC_DIR="AliEmulator"
-        else
-          SRC_DIR="."
-        fi
+        # البحث عن الملفات في المجلد الرئيسي أو المجلد الفرعي ونقلها بدقة
+        if [ -d "AliEmulator" ]; then SRC="AliEmulator"; else SRC="."; fi
 
-        # 3. نقل وتوزيع الملفات إلى أماكنها الصحيحة مجدداً
-        cp $SRC_DIR/MainActivity.java app/src/main/java/com/cyber/g99emulator/ || true
-        cp $SRC_DIR/JoystickView.java app/src/main/java/com/cyber/g99emulator/ || true
-        cp $SRC_DIR/GameOverlayService.java app/src/main/java/com/cyber/g99emulator/ || true
-        cp $SRC_DIR/activity_main.xml app/src/main/res/layout/ || true
-        
-        if [ -f "$SRC_DIR/overlay_controls.xml" ]; then
-          cp $SRC_DIR/overlay_controls.xml app/src/main/res/layout/
-        elif [ -f "$SRC_DIR/layout/overlay_controls.xml" ]; then
-          cp $SRC_DIR/layout/overlay_controls.xml app/src/main/res/layout/
-        fi
+        cp $SRC/MainActivity.java app/src/main/java/com/cyber/g99emulator/ || true
+        cp $SRC/JoystickView.java app/src/main/java/com/cyber/g99emulator/ || true
+        cp $SRC/GameOverlayService.java app/src/main/java/com/cyber/g99emulator/ || true
+        cp $SRC/activity_main.xml app/src/main/res/layout/ || true
+        cp $SRC/overlay_controls.xml app/src/main/res/layout/ || true
 
-        cp $SRC_DIR/AndroidManifest.xml app/src/main/ || true
+        # كتابة ملف Manifest نظيف ومتوافق تلقائياً لمنع أي خطأ بناء
+        cat << 'EOF' > app/src/main/AndroidManifest.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+            <application
+                android:allowBackup="true"
+                android:label="AliEmulator"
+                android:supportsRtl="true"
+                android:theme="@style/Theme.AliEmulator">
+                <activity android:name=".MainActivity" android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+                <service android:name=".GameOverlayService" android:exported="false" />
+            </application>
+        </manifest>
+        EOF
 
-        # 4. إنشاء ملفات البناء الأساسية والإعدادات من الصفر لضمان عدم وجود نقص
+        # إنشاء ملفات إعدادات الـ Gradle الرسمية المتوافقة مع السيرفر
         echo "include ':app'" > settings.gradle
 
         cat << 'EOF' > build.gradle
         buildscript {
-            repositories {
-                google()
-                mavenCentral()
-            }
-            dependencies {
-                classpath 'com.android.tools.build:gradle:8.2.2'
-            }
+            repositories { google(); mavenCentral() }
+            dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
         }
-        allprojects {
-            repositories {
-                google()
-                mavenCentral()
-            }
-        }
+        allprojects { repositories { google(); mavenCentral() } }
         EOF
 
         cat << 'EOF' > app/build.gradle
-        plugins {
-            id 'com.android.application'
-        }
+        plugins { id 'com.android.application' }
         android {
             namespace 'com.cyber.g99emulator'
             compileSdk 34
@@ -89,7 +87,6 @@ jobs:
         }
         EOF
 
-        # 5. إنشاء ملف الألوان والثيمات الأساسي حتى لا يعترض المترجم
         cat << 'EOF' > app/src/main/res/values/themes.xml
         <resources>
             <style name="Theme.AliEmulator" parent="Theme.MaterialComponents.DayNight.NoActionBar" />
