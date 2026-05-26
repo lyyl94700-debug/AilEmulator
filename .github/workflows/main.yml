@@ -1,4 +1,4 @@
-name: Build AliEmulator APK
+صname: Build AliEmulator APK
 
 on:
   push:
@@ -26,27 +26,34 @@ jobs:
         mkdir -p app/src/main/java/com/cyber/g99emulator
         mkdir -p app/src/main/res/layout
         
+        # تحديد المسار الصحيح بناءً على رفعك للملفات
+        if [ -d "AliEmulator" ]; then
+          BASE_DIR="AliEmulator"
+        else
+          BASE_DIR="."
+        fi
+        
         # نقل ملفات الجافا
-        mv MainActivity.java app/src/main/java/com/cyber/g99emulator/
-        mv JoystickView.java app/src/main/java/com/cyber/g99emulator/
-        mv GameOverlayService.java app/src/main/java/com/cyber/g99emulator/
+        mv $BASE_DIR/MainActivity.java app/src/main/java/com/cyber/g99emulator/ || true
+        mv $BASE_DIR/JoystickView.java app/src/main/java/com/cyber/g99emulator/ || true
+        mv $BASE_DIR/GameOverlayService.java app/src/main/java/com/cyber/g99emulator/ || true
         
         # نقل ملفات الواجهة
-        mv activity_main.xml app/src/main/res/layout/
-        if [ -f overlay_controls.xml ]; then
-          mv overlay_controls.xml app/src/main/res/layout/
-        elif [ -f layout/overlay_controls.xml ]; then
-          mv layout/overlay_controls.xml app/src/main/res/layout/
+        mv $BASE_DIR/activity_main.xml app/src/main/res/layout/ || true
+        if [ -f "$BASE_DIR/overlay_controls.xml" ]; then
+          mv $BASE_DIR/overlay_controls.xml app/src/main/res/layout/
+        elif [ -f "$BASE_DIR/layout/overlay_controls.xml" ]; then
+          mv $BASE_DIR/layout/overlay_controls.xml app/src/main/res/layout/
         fi
         
         # نقل المانيفست والـ gradle
-        mv AndroidManifest.xml app/src/main/
-        mv build.gradle app/
+        mv $BASE_DIR/AndroidManifest.xml app/src/main/ || true
+        mv $BASE_DIR/build.gradle app/ || true
         
-        # إنشاء ملف settings.gradle الضروري للبناء
+        # إنشاء ملف settings.gradle
         echo "include ':app'" > settings.gradle
 
-    - name: Grant execute permission for gradlew
+    - name: Grant execute permission and Build
       run: |
         cd app
         gradle wrapper --gradle-version 8.2
