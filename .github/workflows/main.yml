@@ -1,4 +1,4 @@
-صname: Build AliEmulator APK
+ضname: Build AliEmulator APK
 
 on:
   push:
@@ -18,49 +18,91 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-
-    - name: Create Project Structure
+    - name: Create Complete Android Project
       run: |
+        # 1. إنشاء هيكل المجلدات الرسمي لأندرويد ستوديو
         mkdir -p app/src/main/java/com/cyber/g99emulator
         mkdir -p app/src/main/res/layout
-        
-        # تحديد المسار الصحيح بناءً على رفعك للملفات
+        mkdir -p app/src/main/res/values
+
+        # 2. تحديد مكان الملفات المرفوعة
         if [ -d "AliEmulator" ]; then
-          BASE_DIR="AliEmulator"
+          SRC_DIR="AliEmulator"
         else
-          BASE_DIR="."
+          SRC_DIR="."
         fi
+
+        # 3. نقل وتوزيع الملفات إلى أماكنها الصحيحة مجدداً
+        cp $SRC_DIR/MainActivity.java app/src/main/java/com/cyber/g99emulator/ || true
+        cp $SRC_DIR/JoystickView.java app/src/main/java/com/cyber/g99emulator/ || true
+        cp $SRC_DIR/GameOverlayService.java app/src/main/java/com/cyber/g99emulator/ || true
+        cp $SRC_DIR/activity_main.xml app/src/main/res/layout/ || true
         
-        # نقل ملفات الجافا
-        mv $BASE_DIR/MainActivity.java app/src/main/java/com/cyber/g99emulator/ || true
-        mv $BASE_DIR/JoystickView.java app/src/main/java/com/cyber/g99emulator/ || true
-        mv $BASE_DIR/GameOverlayService.java app/src/main/java/com/cyber/g99emulator/ || true
-        
-        # نقل ملفات الواجهة
-        mv $BASE_DIR/activity_main.xml app/src/main/res/layout/ || true
-        if [ -f "$BASE_DIR/overlay_controls.xml" ]; then
-          mv $BASE_DIR/overlay_controls.xml app/src/main/res/layout/
-        elif [ -f "$BASE_DIR/layout/overlay_controls.xml" ]; then
-          mv $BASE_DIR/layout/overlay_controls.xml app/src/main/res/layout/
+        if [ -f "$SRC_DIR/overlay_controls.xml" ]; then
+          cp $SRC_DIR/overlay_controls.xml app/src/main/res/layout/
+        elif [ -f "$SRC_DIR/layout/overlay_controls.xml" ]; then
+          cp $SRC_DIR/layout/overlay_controls.xml app/src/main/res/layout/
         fi
-        
-        # نقل المانيفست والـ gradle
-        mv $BASE_DIR/AndroidManifest.xml app/src/main/ || true
-        mv $BASE_DIR/build.gradle app/ || true
-        
-        # إنشاء ملف settings.gradle
+
+        cp $SRC_DIR/AndroidManifest.xml app/src/main/ || true
+
+        # 4. إنشاء ملفات البناء الأساسية والإعدادات من الصفر لضمان عدم وجود نقص
         echo "include ':app'" > settings.gradle
 
-    - name: Grant execute permission and Build
+        cat << 'EOF' > build.gradle
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+            }
+            dependencies {
+                classpath 'com.android.tools.build:gradle:8.2.2'
+            }
+        }
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        EOF
+
+        cat << 'EOF' > app/build.gradle
+        plugins {
+            id 'com.android.application'
+        }
+        android {
+            namespace 'com.cyber.g99emulator'
+            compileSdk 34
+            defaultConfig {
+                applicationId "com.cyber.g99emulator"
+                minSdk 24
+                targetSdk 34
+                versionCode 1
+                versionName "1.0"
+            }
+        }
+        dependencies {
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+            implementation 'com.google.android.material:material:1.11.0'
+            implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+        }
+        EOF
+
+        # 5. إنشاء ملف الألوان والثيمات الأساسي حتى لا يعترض المترجم
+        cat << 'EOF' > app/src/main/res/values/themes.xml
+        <resources>
+            <style name="Theme.AliEmulator" parent="Theme.MaterialComponents.DayNight.NoActionBar" />
+        </resources>
+        EOF
+
+    - name: Setup Gradle and Build APK
       run: |
-        cd app
         gradle wrapper --gradle-version 8.2
         chmod +x gradlew
         ./gradlew assembleDebug
 
-    - name: Upload APK
+    - name: Upload APK Result
       uses: actions/upload-artifact@v4
       with:
         name: AliEmulator-Debug-APK
